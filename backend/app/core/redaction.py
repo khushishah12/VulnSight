@@ -31,7 +31,7 @@ _PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
         re.compile(r"\b(AKIA[0-9A-Z]{16})\b"),
         "[REDACTED_AWS_KEY]",
     ),
-    # Generic API Key and Secret patterns (e.g., sk_live_..., api_key=...)
+    # Generic API Key and Secret patterns (e.g., api_key=..., api_secret=...)
     (
         re.compile(r"(?i)(api[_-]?key|api[_-]?secret)\s*[:=]\s*['\"]?[A-Za-z0-9_\-\.]{16,64}['\"]?"),
         r"\1=[REDACTED_API_KEY]",
