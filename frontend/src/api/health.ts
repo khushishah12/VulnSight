@@ -11,3 +11,5 @@ export function getHealth(): Promise<HealthResponse> {
 export function getDatabaseHealth(): Promise<DatabaseHealthResponse> {
   return apiGet<DatabaseHealthResponse>("/health/db");
 }
+
+export const checkDatabaseHealth = getDatabaseHealth;

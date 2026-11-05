@@ -1,3 +1,7 @@
+/**
+ * HTTP client for communicating with the VulnSight FastAPI backend.
+ */
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
 export class ApiError extends Error {
@@ -12,28 +16,75 @@ export class ApiError extends Error {
   }
 }
 
-async function readJson(response: Response): Promise<unknown> {
-  try {
-    return await response.json();
-  } catch {
-    return null;
+async function handleResponse<T>(response: Response): Promise<T> {
+  let payload: unknown = null;
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+  } else {
+    try {
+      payload = await response.text();
+    } catch {
+      payload = null;
+    }
   }
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}.`;
+    if (payload && typeof payload === "object" && "detail" in payload) {
+      const detail = (payload as { detail: unknown }).detail;
+      if (typeof detail === "string") {
+        message = detail;
+      } else if (Array.isArray(detail)) {
+        message = detail.map((d: { msg?: string }) => d.msg ?? JSON.stringify(d)).join("; ");
+      }
+    }
+    throw new ApiError(response.status, payload, message);
+  }
+
+  return payload as T;
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "GET",
     headers: { Accept: "application/json" },
   });
+  return handleResponse<T>(response);
+}
 
-  const payload = await readJson(response);
+export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  return handleResponse<T>(response);
+}
 
-  if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      payload,
-      `Request failed with status ${response.status}.`,
-    );
-  }
+export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "PATCH",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  return handleResponse<T>(response);
+}
 
-  return payload as T;
+export async function apiDelete<T>(path: string): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "DELETE",
+    headers: { Accept: "application/json" },
+  });
+  return handleResponse<T>(response);
 }
