@@ -150,6 +150,17 @@ export function LiveScanProgressPage() {
               <ArrowRightIcon className="w-3.5 h-3.5" />
             </button>
           )}
+
+          {(currentStatus === "failed" || currentStatus === "cancelled") && (
+            <button
+              type="button"
+              onClick={() => navigate("scan-results", { scanId: scanId! })}
+              className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs tracking-wide transition shadow-sm cursor-pointer"
+            >
+              <span>View Diagnostics / Partial Results</span>
+              <ArrowRightIcon className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

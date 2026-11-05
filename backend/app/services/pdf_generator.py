@@ -35,7 +35,7 @@ from reportlab.platypus import (
 
 
 class NumberedCanvas(canvas.Canvas):
-    """Two-pass canvas to draw running footer with total page count."""
+    """Two-pass canvas to draw running header, footer, and page count."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -54,34 +54,49 @@ class NumberedCanvas(canvas.Canvas):
         super().save()
 
     def draw_page_decorations(self, total_pages: int) -> None:
+        # Running Header (pages > 1)
         self.saveState()
         self.setFont("Helvetica", 8)
         self.setFillColor(colors.HexColor("#64748b"))
 
-        # Running header (pages > 1)
         if self._pageNumber > 1:
             self.drawString(
                 40,
                 755,
                 "VulnSight Enterprise Security Assessment Deliverable",
             )
-            self.drawRightString(572, 755, "CONFIDENTIAL & PROPRIETARY")
+            self.drawRightString(572, 755, "Assessed by Khushi Shah · CONFIDENTIAL")
             self.setStrokeColor(colors.HexColor("#cbd5e1"))
             self.setLineWidth(0.5)
             self.line(40, 750, 572, 750)
 
-        # Running footer
+        # Running Footer (all pages)
         page_str = f"Page {self._pageNumber} of {total_pages}"
         self.drawString(
             40,
             30,
-            "VulnSight Security Operations · Authorized Target Assessment",
+            "VulnSight Security Operations · Lead Auditor: Khushi Shah",
         )
         self.drawRightString(572, 30, page_str)
         self.setStrokeColor(colors.HexColor("#e2e8f0"))
         self.setLineWidth(0.5)
         self.line(40, 38, 572, 38)
         self.restoreState()
+
+
+def _draw_background_watermark(canvas_obj: canvas.Canvas, doc_obj: Any) -> None:
+    """Draw a soft, non-intrusive diagonal watermark in the page background under all content."""
+    canvas_obj.saveState()
+    try:
+        canvas_obj.setFillAlpha(0.035)
+    except Exception:
+        pass
+    canvas_obj.setFillColor(colors.HexColor("#cbd5e1"))
+    canvas_obj.setFont("Helvetica-Bold", 48)
+    canvas_obj.translate(306, 396)
+    canvas_obj.rotate(45)
+    canvas_obj.drawCentredString(0, 0, "Khushi Shah")
+    canvas_obj.restoreState()
 
 
 def _get_severity_color(severity: str) -> colors.HexColor:
@@ -122,6 +137,10 @@ def _calculate_score(counts: dict[str, int]) -> tuple[int, str]:
 
 def generate_pdf_report(snapshot: dict[str, Any]) -> bytes:
     """Build a comprehensive, publication-grade PDF deliverable from report snapshot."""
+    scan = snapshot.get("scan", {})
+    scan_name = scan.get("name") or "Security Assessment"
+    doc_title = f"VulnSight Security Assessment Report - {scan_name} | Khushi Shah"
+
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -130,6 +149,10 @@ def generate_pdf_report(snapshot: dict[str, Any]) -> bytes:
         rightMargin=40,
         topMargin=50,
         bottomMargin=50,
+        title=doc_title,
+        author="Khushi Shah",
+        subject="Automated Vulnerability Assessment & Penetration Audit Report",
+        creator="VulnSight Engine by Khushi Shah",
     )
 
     sample_styles = getSampleStyleSheet()
@@ -238,7 +261,7 @@ def generate_pdf_report(snapshot: dict[str, Any]) -> bytes:
     )
     elements.append(
         Paragraph(
-            f"Automated OWASP Top 10:2025 Vulnerability Audit & Deliverable Report · {scan.get('name', 'Scan Session')}",
+            f"Automated OWASP Top 10:2025 Vulnerability Audit & Deliverable Report · Assessed by Khushi Shah",
             styles["CoverSubtitle"],
         )
     )
@@ -260,7 +283,7 @@ def generate_pdf_report(snapshot: dict[str, Any]) -> bytes:
 
     score_box_data = [
         [
-            Paragraph("<b>Security Posture Score</b>", styles["Body"]),
+            Paragraph("<b>Security Posture Score</b><br/><font size=7 color='#64748b'>OWASP Risk Metric</font>", styles["Body"]),
             Paragraph(
                 f"<font size=16 color='#059669'><b>{score} / 100</b></font><br/>"
                 f"<b>Grade:</b> {grade}",
@@ -269,7 +292,7 @@ def generate_pdf_report(snapshot: dict[str, Any]) -> bytes:
             Paragraph(
                 f"<b>Total Vulnerabilities:</b> {len(findings)}<br/>"
                 f"<b>Critical / High:</b> {by_severity.get('critical', 0)} / {by_severity.get('high', 0)}<br/>"
-                f"<b>Assessment Mode:</b> Non-destructive, safe active probes",
+                f"<b>Lead Security Auditor:</b> Khushi Shah",
                 styles["Body"],
             ),
         ]
@@ -644,6 +667,11 @@ def generate_pdf_report(snapshot: dict[str, Any]) -> bytes:
         ),
     ]))
 
-    # Build PDF with dynamic 2-pass running canvas
-    doc.build(elements, canvasmaker=NumberedCanvas)
+    # Build PDF with background watermark and dynamic 2-pass running canvas
+    doc.build(
+        elements,
+        onFirstPage=_draw_background_watermark,
+        onLaterPages=_draw_background_watermark,
+        canvasmaker=NumberedCanvas,
+    )
     return buffer.getvalue()

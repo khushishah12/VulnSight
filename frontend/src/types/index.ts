@@ -177,10 +177,17 @@ export interface FindingDetail extends FindingSummary {
 export interface ReportItem {
   id: string;
   scan_id: string;
-  title: string;
-  version: string;
-  format: "json" | "markdown" | "pdf";
+  title?: string;
+  version: number | string;
+  format: "json" | "html" | "pdf";
+  status?: string;
+  file_name?: string;
+  content_type?: string;
+  size_bytes?: number | null;
+  content_sha256?: string | null;
+  download_url?: string;
   created_at: string;
+  generated_at?: string | null;
   summary?: Record<string, unknown>;
 }
 

@@ -48,6 +48,11 @@ async def validate_target(payload: TargetValidateRequest) -> TargetValidateRespo
 
 
 @router.get(
+    "/recon/scans/{scan_id}/endpoints",
+    response_model=DiscoveredEndpointListResponse,
+    include_in_schema=False,
+)
+@router.get(
     "/scans/{scan_id}/endpoints",
     response_model=DiscoveredEndpointListResponse,
 )

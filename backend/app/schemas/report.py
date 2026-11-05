@@ -13,7 +13,12 @@ ReportStatus = Literal["pending", "generated", "failed"]
 
 
 class ReportCreate(ORMModel):
-    format: ReportFormat
+    format: ReportFormat = "pdf"
+
+
+class DirectReportCreate(ORMModel):
+    scan_id: uuid.UUID
+    format: ReportFormat = "pdf"
 
 
 class ReportRead(ORMModel):

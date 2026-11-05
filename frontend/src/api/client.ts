@@ -35,12 +35,17 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
   if (!response.ok) {
     let message = `Request failed with status ${response.status}.`;
-    if (payload && typeof payload === "object" && "detail" in payload) {
-      const detail = (payload as { detail: unknown }).detail;
-      if (typeof detail === "string") {
-        message = detail;
-      } else if (Array.isArray(detail)) {
-        message = detail.map((d: { msg?: string }) => d.msg ?? JSON.stringify(d)).join("; ");
+    if (payload && typeof payload === "object") {
+      const p = payload as Record<string, any>;
+      if (p.error && typeof p.error === "object" && typeof p.error.message === "string") {
+        message = p.error.message;
+      } else if ("detail" in p) {
+        const detail = p.detail;
+        if (typeof detail === "string") {
+          message = detail;
+        } else if (Array.isArray(detail)) {
+          message = detail.map((d: { msg?: string }) => d.msg ?? JSON.stringify(d)).join("; ");
+        }
       }
     }
     throw new ApiError(response.status, payload, message);

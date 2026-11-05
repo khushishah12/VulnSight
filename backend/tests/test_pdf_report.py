@@ -171,3 +171,21 @@ def test_pdf_report_encodes_and_decodes_base64_durable_storage():
     restored_bytes = base64.b64decode(encoded_str.encode("ascii"))
     assert restored_bytes == pdf_bytes
     assert hashlib.sha256(restored_bytes).hexdigest() == hashlib.sha256(pdf_bytes).hexdigest()
+
+
+def test_pdf_report_title_metadata_and_watermark():
+    """Ensure PDF includes explicit title metadata (avoiding Chrome 'anonymous') and Khushi Shah watermark."""
+    import re
+
+    snapshot = _sample_snapshot(with_findings=True)
+    pdf_bytes = generate_pdf_report(snapshot)
+
+    # 1. Verify Title does NOT say anonymous
+    title_match = re.search(rb"/Title\s*(\([^)]*\)|<[^>]*>)", pdf_bytes)
+    assert title_match is not None
+    title_str = title_match.group(0).decode("latin1")
+    assert "anonymous" not in title_str.lower()
+    assert "Khushi Shah" in title_str
+
+    # 2. Verify Khushi Shah watermark exists in canvas stream
+    assert b"Khushi Shah" in pdf_bytes

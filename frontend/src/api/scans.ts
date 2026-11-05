@@ -44,6 +44,10 @@ export async function cancelScan(scanId: string): Promise<ScanStatusResponse> {
 }
 
 export async function fetchScanEndpoints(scanId: string): Promise<DiscoveredEndpoint[]> {
-  const res = await apiGet<{ items: DiscoveredEndpoint[] }>(`/recon/scans/${scanId}/endpoints`);
-  return res.items ?? [];
+  try {
+    const res = await apiGet<{ items: DiscoveredEndpoint[] }>(`/scans/${scanId}/endpoints`);
+    return res.items ?? [];
+  } catch {
+    return [];
+  }
 }

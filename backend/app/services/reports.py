@@ -285,7 +285,8 @@ def _render_html(snapshot: dict[str, Any]) -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>VulnSight report — {_esc(scan['name'])}</title>
+  <meta name="author" content="Khushi Shah">
+  <title>VulnSight Security Report — {_esc(scan['name'])} | Khushi Shah</title>
   <style>
     body {{ font-family: Segoe UI, Arial, sans-serif; margin: 2rem; color: #172033; }}
     h1, h2, h3 {{ color: #0f172a; }}
@@ -299,14 +300,30 @@ def _render_html(snapshot: dict[str, Any]) -> str:
     .sev-medium {{ color: #b45309; font-weight: 700; }}
     .sev-low, .sev-info {{ color: #0369a1; font-weight: 700; }}
     .disclaimer {{ background: #fff7ed; border-left: 4px solid #f59e0b; padding: 0.75rem; }}
+    .watermark {{
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-45deg);
+      font-size: 5.5rem;
+      font-weight: 800;
+      color: rgba(100, 116, 139, 0.04);
+      pointer-events: none;
+      z-index: -1;
+      user-select: none;
+      white-space: nowrap;
+      letter-spacing: 4px;
+    }}
   </style>
 </head>
 <body>
+  <div class="watermark">Khushi Shah</div>
   <h1>VulnSight report</h1>
   <p class="disclaimer">{_esc(snapshot['disclaimer'])}</p>
   <h2>{_esc(scan['name'])}</h2>
   <p>
     Status: <strong>{_esc(scan['status'])}</strong><br>
+    Lead Security Auditor: <strong>Khushi Shah</strong><br>
     Profile: {_esc(scan['profile'])}<br>
     Created: {_esc(scan['created_at'])}<br>
     Started: {_esc(scan['started_at'] or 'Not started')}<br>
@@ -381,13 +398,18 @@ async def generate_report(
         digest = hashlib.sha256(raw_bytes).hexdigest()
         size_bytes = len(raw_bytes)
 
+    raw_name = snapshot.get("scan", {}).get("name") or str(scan_id)
+    safe_name = "".join(
+        c if c.isalnum() or c in "-_" else "_" for c in raw_name
+    ).strip("_")
+
     report = Report(
         scan_id=scan_id,
         format=report_format,
         status="generated",
         version=version,
         file_name=(
-            f"vulnsight-scan-{scan_id}-{report_format}-v{version}.{extension}"
+            f"VulnSight-Security-Report-{safe_name}-v{version}.{extension}"
         ),
         content_type=content_type,
         content=content,
@@ -444,6 +466,30 @@ async def list_reports_for_scan(
     result = await session.execute(
         select(Report)
         .where(Report.scan_id == scan_id)
+        .order_by(Report.created_at.desc(), Report.version.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    reports = result.scalars().all()
+    return ReportListResponse(
+        items=[ReportRead.model_validate(report) for report in reports],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+async def list_all_reports(
+    session: AsyncSession,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+) -> ReportListResponse:
+    total_result = await session.execute(select(func.count(Report.id)))
+    total = int(total_result.scalar_one())
+
+    result = await session.execute(
+        select(Report)
         .order_by(Report.created_at.desc(), Report.version.desc())
         .limit(limit)
         .offset(offset)

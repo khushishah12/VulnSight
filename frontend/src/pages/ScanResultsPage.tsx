@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchScan, fetchScanEndpoints } from "../api/scans";
+import { fetchScan, fetchScanEndpoints, fetchScans } from "../api/scans";
 import { fetchScanFindings } from "../api/findings";
 import { useNavigation } from "../context/NavigationContext";
 import {
@@ -9,11 +9,12 @@ import {
   FileTextIcon,
   LayersIcon,
   ShieldIcon,
+  ShieldAlertIcon,
 } from "../components/ui/Icons";
 import { StatusBadge, SeverityBadge } from "../components/ui/Badge";
 import { SecurityScoreGauge } from "../components/ui/SecurityScoreGauge";
 import { StatCard } from "../components/ui/StatCard";
-import { ErrorAlert, LoadingSkeleton } from "../components/ui/Feedback";
+import { ErrorAlert, LoadingSkeleton, EmptyState } from "../components/ui/Feedback";
 import type { DiscoveredEndpoint, FindingSummary, ScanSession } from "../types";
 
 export function ScanResultsPage() {
@@ -27,32 +28,100 @@ export function ScanResultsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!scanId) return;
+    let isMounted = true;
 
     async function loadScanData() {
       setLoading(true);
       setError(null);
       try {
+        let activeScanId = scanId;
+
+        // If no scanId was specified in the route, look up the latest scan session
+        if (!activeScanId) {
+          const recent = await fetchScans(undefined, 1);
+          if (recent.items && recent.items.length > 0) {
+            activeScanId = recent.items[0].id;
+          } else {
+            if (isMounted) {
+              setScan(null);
+              setLoading(false);
+            }
+            return;
+          }
+        }
+
         const [scanData, findingsRes, endpointsData] = await Promise.all([
-          fetchScan(scanId!),
-          fetchScanFindings(scanId!, { limit: 100 }),
-          fetchScanEndpoints(scanId!),
+          fetchScan(activeScanId),
+          fetchScanFindings(activeScanId, { limit: 100 }).catch(() => ({
+            items: [],
+            total: 0,
+            limit: 100,
+            offset: 0,
+          })),
+          fetchScanEndpoints(activeScanId).catch(() => []),
         ]);
-        setScan(scanData);
-        setFindings(findingsRes.items);
-        setEndpoints(endpointsData);
+
+        if (isMounted) {
+          setScan(scanData);
+          setFindings(findingsRes.items || []);
+          setEndpoints(endpointsData || []);
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load scan results.");
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : "Failed to load scan results.");
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
 
     loadScanData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [scanId]);
 
   if (loading) return <LoadingSkeleton count={4} />;
-  if (error || !scan) return <ErrorAlert title="Scan Results Error" message={error || "Scan not found."} />;
+
+  if (!scan && !error) {
+    return (
+      <div className="space-y-6 max-w-4xl mx-auto py-8">
+        <EmptyState
+          title="No Assessment Results Available"
+          message="No active or completed vulnerability assessments found. Configure an authorized target domain to launch an automated security inspection."
+          action={
+            <button
+              type="button"
+              onClick={() => navigate("new-scan")}
+              className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs uppercase tracking-wide transition shadow-sm cursor-pointer"
+            >
+              Launch New Assessment
+            </button>
+          }
+        />
+      </div>
+    );
+  }
+
+  if (error || !scan) {
+    return (
+      <div className="space-y-4 max-w-4xl mx-auto">
+        <ErrorAlert title="Scan Results Error" message={error || "Scan session not found."} />
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => navigate("scan-history")}
+            className="px-4 py-2 rounded-lg bg-slate-800 text-slate-200 text-xs font-semibold hover:bg-slate-700 transition"
+          >
+            &larr; Return to Scan History
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const criticalCount = findings.filter((f) => f.severity === "critical").length;
   const highCount = findings.filter((f) => f.severity === "high").length;
@@ -82,7 +151,7 @@ export function ScanResultsPage() {
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-slate-100 hover:bg-slate-800 text-xs font-medium transition cursor-pointer"
           >
             <FileTextIcon className="w-3.5 h-3.5 text-slate-400" />
-            <span>Export Report</span>
+            <span>Export Report Deliverable</span>
           </button>
           <button
             type="button"
@@ -108,7 +177,7 @@ export function ScanResultsPage() {
           title="Critical / High"
           value={criticalCount + highCount}
           subtitle="Immediate remediation"
-          icon={<ShieldIcon className="w-4 h-4 text-rose-400" />}
+          icon={<ShieldAlertIcon className="w-4 h-4 text-rose-400" />}
           highlightColor="#f43f5e"
         />
         <StatCard
@@ -119,9 +188,9 @@ export function ScanResultsPage() {
           highlightColor="#0284c7"
         />
         <StatCard
-          title="Scan Timing"
-          value={scan.finished_at ? "Completed" : "Running"}
-          subtitle={new Date(scan.created_at).toLocaleTimeString()}
+          title="Session Status"
+          value={scan.status.toUpperCase()}
+          subtitle={scan.finished_at ? `Finished: ${new Date(scan.finished_at).toLocaleTimeString()}` : `Started: ${new Date(scan.created_at).toLocaleTimeString()}`}
           icon={<CheckCircleIcon className="w-4 h-4 text-emerald-400" />}
           highlightColor="#10b981"
         />
@@ -201,7 +270,7 @@ export function ScanResultsPage() {
 
         {endpoints.length === 0 ? (
           <div className="p-8 text-center text-xs text-slate-400">
-            No endpoints were discovered for this target.
+            No endpoints were recorded for this target session.
           </div>
         ) : (
           <div className="overflow-x-auto max-h-72">
