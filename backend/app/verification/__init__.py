@@ -1,0 +1,1 @@
+﻿"""verification module (foundation placeholder)."""
