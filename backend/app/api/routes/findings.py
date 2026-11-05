@@ -9,6 +9,7 @@ from fastapi import APIRouter, status
 from app.api.deps import SessionDep
 from app.schemas.finding import (
     FindingDetail,
+    RemediationGuideRead,
     RemediationRead,
     RemediationUpdate,
     VerificationRead,
@@ -25,6 +26,15 @@ async def get_finding(
     session: SessionDep,
 ) -> FindingDetail:
     return await finding_service.get_finding(session, finding_id)
+
+
+@router.get("/{finding_id}/remediation-guide", response_model=RemediationGuideRead)
+async def get_finding_remediation_guide(
+    finding_id: uuid.UUID,
+    session: SessionDep,
+) -> RemediationGuideRead:
+    """Retrieve full multi-framework remediation guide for this finding."""
+    return await finding_service.get_finding_remediation_guide(session, finding_id)
 
 
 @router.patch(
@@ -63,4 +73,5 @@ async def request_verification(
         session,
         finding_id,
         note=payload.note,
+        execute_now=payload.execute_now,
     )

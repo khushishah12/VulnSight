@@ -10,6 +10,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.redaction import redact_sensitive_text
 from app.models.endpoint import DiscoveredEndpoint
 from app.models.evidence import Evidence
 from app.models.finding import Finding
@@ -30,6 +31,7 @@ from app.scanners.a09_logging_failures import LoggingAndAlertingScanner
 from app.scanners.a10_exceptional_conditions import ExceptionalConditionsScanner
 from app.scanners.base import BaseScanner, FindingDraft
 from app.services.audit import record_audit
+from app.services.risk_engine import calculate_risk_assessment
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +106,17 @@ async def persist_scan_findings(
             continue
         seen_in_batch.add(fp)
 
-        # 1. Create Finding entity
+        # 1. Create Finding entity with risk score and detection method
+        calculated_risk = (
+            draft.risk_score
+            if draft.risk_score is not None
+            else calculate_risk_assessment(
+                severity=draft.severity,
+                confidence=draft.confidence,
+                owasp_category=draft.owasp_category,
+            ).score
+        )
+
         finding = Finding(
             scan_id=scan_id,
             endpoint_id=draft.endpoint_id,
@@ -116,21 +128,23 @@ async def persist_scan_findings(
             confidence=draft.confidence,
             status="open",
             fingerprint=fp,
+            risk_score=calculated_risk,
+            detection_method=draft.detection_method or "automated_security_check",
         )
         session.add(finding)
         await session.flush()  # Generates finding.id
 
-        # 2. Attach Evidence items
+        # 2. Attach Evidence items with sensitive data redaction
         for ev in draft.evidence:
-            ev_content = ev.content
-            ev_sha = hashlib.sha256(ev_content.encode("utf-8")).hexdigest()
+            scrubbed_content, was_redacted = redact_sensitive_text(ev.content)
+            ev_sha = hashlib.sha256(scrubbed_content.encode("utf-8")).hexdigest()
             evidence_record = Evidence(
                 finding_id=finding.id,
                 kind=ev.kind,
                 label=ev.label[:200],
-                content=ev_content,
+                content=scrubbed_content,
                 content_sha256=ev_sha,
-                is_redacted=ev.is_redacted,
+                is_redacted=ev.is_redacted or was_redacted,
             )
             session.add(evidence_record)
 

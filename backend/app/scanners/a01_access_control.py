@@ -68,6 +68,7 @@ class AccessControlScanner(BaseScanner):
                             ),
                             severity="high",
                             confidence="firm",
+                            detection_method="active_path_probe",
                             evidence=[
                                 FindingEvidenceDraft(
                                     kind="response",
@@ -107,6 +108,7 @@ class AccessControlScanner(BaseScanner):
                                 ),
                                 severity="medium",
                                 confidence="tentative",
+                                detection_method="active_verb_tampering",
                                 endpoint_id=ep.id,
                                 evidence=[
                                     FindingEvidenceDraft(

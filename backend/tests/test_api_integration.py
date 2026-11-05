@@ -20,6 +20,7 @@ import pytest
 from sqlalchemy import delete, select, text
 from sqlalchemy.exc import IntegrityError
 
+from app.core.config import settings
 from app.db.engine import AsyncSessionLocal, dispose_engine
 from app.main import app
 from app.models.audit_log import AuditLog
@@ -272,7 +273,9 @@ async def test_scan_creation_and_retrieval(
 async def test_scan_lifecycle_completes_with_placeholder(
     client: httpx.AsyncClient,
     scan: dict,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(settings, "scan_executor_mode", "placeholder")
     started = await client.post(f"{API}/scans/{scan['id']}/start")
 
     assert started.status_code == 202

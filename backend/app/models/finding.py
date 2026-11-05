@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     CheckConstraint,
+    Float,
     ForeignKey,
     Index,
     String,
@@ -90,6 +91,8 @@ class Finding(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         index=True,
     )
     fingerprint: Mapped[str | None] = mapped_column(String(64), index=True)
+    risk_score: Mapped[float | None] = mapped_column(Float, index=True)
+    detection_method: Mapped[str | None] = mapped_column(String(50))
 
     scan: Mapped[ScanSession] = relationship(back_populates="findings")
     endpoint: Mapped[DiscoveredEndpoint | None] = relationship(

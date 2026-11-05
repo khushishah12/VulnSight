@@ -37,6 +37,8 @@ class FindingDraft:
     confidence: str  # certain, firm, tentative
     endpoint_id: uuid.UUID | None = None
     fingerprint: str | None = None
+    detection_method: str = "automated_security_check"
+    risk_score: float | None = None
     evidence: list[FindingEvidenceDraft] = field(default_factory=list)
     remediation_summary: str = ""
     remediation_steps: list[str] = field(default_factory=list)
