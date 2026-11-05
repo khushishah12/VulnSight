@@ -8,7 +8,7 @@ from pydantic import computed_field
 
 from app.schemas.common import ORMModel, Page
 
-ReportFormat = Literal["html", "json"]
+ReportFormat = Literal["html", "json", "pdf"]
 ReportStatus = Literal["pending", "generated", "failed"]
 
 

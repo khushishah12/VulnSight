@@ -6,7 +6,7 @@ export type Severity = "critical" | "high" | "medium" | "low" | "info";
 export type Confidence = "certain" | "firm" | "tentative";
 export type FindingStatus = "open" | "in_progress" | "remediated" | "verified" | "accepted_risk" | "false_positive";
 export type RemediationStatus = "not_started" | "in_progress" | "done" | "accepted_risk";
-export type VerificationStatus = "pending" | "running" | "passed" | "failed" | "error" | "cancelled";
+export type VerificationStatus = "pending" | "running" | "passed" | "failed" | "error" | "cancelled" | "fixed" | "persists" | "inconclusive";
 export type ScanStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
 
 export interface ScanTarget {

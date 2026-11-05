@@ -38,18 +38,25 @@ export function StatusBadge({ status }: { status: FindingStatus | string }) {
   } else if (st === "remediated" || st === "done") {
     color = "bg-teal-500/10 text-teal-400 border-teal-500/30";
     label = "remediated";
-  } else if (st === "verified") {
+  } else if (st === "verified" || st === "fixed" || st === "passed") {
     color = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-semibold";
-    label = "verified fix";
+    label = st === "fixed" ? "Fixed" : (st === "verified" ? "Verified Fix" : "Passed");
+  } else if (st === "persists") {
+    color = "bg-rose-500/10 text-rose-400 border-rose-500/30 font-semibold";
+    label = "Vulnerability Persists";
+  } else if (st === "inconclusive") {
+    color = "bg-amber-500/10 text-amber-400 border-amber-500/30 font-semibold";
+    label = "Inconclusive";
   } else if (st === "accepted_risk") {
     color = "bg-purple-500/10 text-purple-400 border-purple-500/30";
     label = "accepted risk";
-  } else if (st === "completed" || st === "passed") {
+  } else if (st === "completed") {
     color = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
   } else if (st === "running" || st === "pending") {
     color = "bg-sky-500/10 text-sky-400 border-sky-500/30 animate-pulse";
   } else if (st === "failed" || st === "error") {
     color = "bg-rose-500/10 text-rose-400 border-rose-500/30";
+    label = st === "error" ? "Verification Failed" : "Failed";
   }
 
   return (

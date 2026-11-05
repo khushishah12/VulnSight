@@ -6,6 +6,7 @@ historical output is not silently overwritten.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import html
 import json
@@ -25,6 +26,7 @@ from app.models.report import Report
 from app.models.scan import ScanSession
 from app.schemas.report import ReportListResponse, ReportRead
 from app.services.audit import record_audit
+from app.services.pdf_generator import generate_pdf_report
 
 _SEVERITY_RANK = {
     "critical": 0,
@@ -336,7 +338,7 @@ async def generate_report(
     report_format: str,
     actor_label: str = "local-admin",
 ) -> ReportRead:
-    if report_format not in {"html", "json"}:
+    if report_format not in {"html", "json", "pdf"}:
         raise ConflictError("Unsupported report format.")
 
     lock_result = await session.execute(
@@ -361,12 +363,24 @@ async def generate_report(
         content = _render_json(snapshot)
         content_type = "application/json"
         extension = "json"
+        raw_bytes = content.encode("utf-8")
+        digest = hashlib.sha256(raw_bytes).hexdigest()
+        size_bytes = len(raw_bytes)
+    elif report_format == "pdf":
+        raw_bytes = generate_pdf_report(snapshot)
+        content = base64.b64encode(raw_bytes).decode("ascii")
+        content_type = "application/pdf"
+        extension = "pdf"
+        digest = hashlib.sha256(raw_bytes).hexdigest()
+        size_bytes = len(raw_bytes)
     else:
         content = _render_html(snapshot)
         content_type = "text/html; charset=utf-8"
         extension = "html"
+        raw_bytes = content.encode("utf-8")
+        digest = hashlib.sha256(raw_bytes).hexdigest()
+        size_bytes = len(raw_bytes)
 
-    digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
     report = Report(
         scan_id=scan_id,
         format=report_format,
@@ -378,7 +392,7 @@ async def generate_report(
         content_type=content_type,
         content=content,
         content_sha256=digest,
-        size_bytes=len(content.encode("utf-8")),
+        size_bytes=size_bytes,
         generated_at=datetime.now(timezone.utc),
     )
     session.add(report)

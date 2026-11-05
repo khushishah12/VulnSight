@@ -33,6 +33,9 @@ VerificationStatus = Literal[
     "failed",
     "error",
     "cancelled",
+    "fixed",
+    "persists",
+    "inconclusive",
 ]
 
 

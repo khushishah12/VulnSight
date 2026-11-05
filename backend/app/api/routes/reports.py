@@ -26,9 +26,16 @@ async def download_report(
     report_id: uuid.UUID,
     session: SessionDep,
 ) -> Response:
+    import base64
+
     report = await report_service.get_report_for_download(session, report_id)
+    if report.format == "pdf":
+        body: bytes = base64.b64decode((report.content or "").encode("ascii"))
+    else:
+        body = (report.content or "").encode("utf-8")
+
     return Response(
-        content=report.content or "",
+        content=body,
         media_type=report.content_type,
         headers={
             "Content-Disposition": (

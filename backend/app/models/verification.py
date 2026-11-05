@@ -38,7 +38,7 @@ class VerificationRun(UUIDPrimaryKeyMixin, Base):
     __table_args__ = (
         CheckConstraint(
             "status IN ('pending', 'running', 'passed', 'failed', 'error', "
-            "'cancelled')",
+            "'cancelled', 'fixed', 'persists', 'inconclusive')",
             name="status_allowed",
         ),
         Index(

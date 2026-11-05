@@ -42,7 +42,7 @@ class Report(UUIDPrimaryKeyMixin, Base):
             name="uq_reports_scan_format_version",
         ),
         CheckConstraint(
-            "format IN ('html', 'json')",
+            "format IN ('html', 'json', 'pdf')",
             name="format_allowed",
         ),
         CheckConstraint(
